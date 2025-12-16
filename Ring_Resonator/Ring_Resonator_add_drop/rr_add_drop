@@ -1,0 +1,111 @@
+import sys
+import os
+import numpy as np
+# --- MODIFY THIS LINE IF YOUR LUMERICAL INSTALLATION IS DIFFERENT ---
+lumapi_path = r"C:\Program Files\Lumerical\v241\api\python"
+if lumapi_path not in sys.path:
+    sys.path.append(lumapi_path)
+import lumapi
+# --- Device Parameters (all units in meters) ---
+clad_z_min = -3e-6
+clad_z_max = 0
+wg_height = 0.22e-6
+wg_width = 0.40e-6
+ring_center_radius = 3.3e-6
+ring_width = 0.40e-6
+gap = 50e-9
+si_material = "Si (Silicon) - Palik"
+clad_material = "SiO2 (Glass) - Palik"
+# --- Simulation Parameters ---
+wl_start = 1.5e-6
+wl_stop = 1.6e-6
+simulation_time = 4000e-15
+num_freq_points = 500
+# --- Calculated Geometric Parameters ---
+ring_inner_radius = ring_center_radius - (ring_width / 2)
+ring_outer_radius = ring_center_radius + (ring_width / 2)
+# --- Start a new FDTD session ---
+with lumapi.FDTD() as fdtd:
+    fdtd.newproject()
+    
+    # --- 1. Geometry Setup ---
+    # The 'gap' variable now controls both waveguide positions
+    wg_upper_center_y = ring_outer_radius + gap + (wg_width / 2)
+    wg_lower_center_y = -(ring_outer_radius + gap + (wg_width / 2))
+    
+    fdtd.addrect(name="clad", material=clad_material, x=0, y=0, z_min=clad_z_min, z_max=clad_z_max, x_span=12e-6, y_span=12e-6)
+    z_center_si = wg_height / 2
+    fdtd.addring(name="ring", material=si_material, x=0, y=0, z=z_center_si, inner_radius=ring_inner_radius, outer_radius=ring_outer_radius, z_span=wg_height)
+    
+    # Add the upper waveguide
+    fdtd.addrect(name="waveguide_upper", material=si_material, x=0, y=wg_upper_center_y, z=z_center_si, x_span=12e-6, y_span=wg_width, z_span=wg_height)
+    
+    # Add the lower waveguide
+    fdtd.addrect(name="waveguide_lower", material=si_material, x=0, y=wg_lower_center_y, z=z_center_si, x_span=12e-6, y_span=wg_width, z_span=wg_height)
+
+    # --- 2. Simulation Region Setup ---
+    fdtd.addfdtd()
+    fdtd.set("dimension", "3D")
+    fdtd.set("x min", -5.5e-6); fdtd.set("x max", 5.5e-6)
+    fdtd.set("y min", -6e-6); fdtd.set("y max", 6e-6)
+    fdtd.set("z min", -1e-6);   fdtd.set("z max", 1e-6)
+    fdtd.set("simulation time", simulation_time)
+    
+    # --- 3. Global Monitor Settings ---
+    fdtd.setglobalmonitor("frequency points", num_freq_points)
+    
+    # --- 4. Mode Source Setup (coupled to upper waveguide) ---
+    fdtd.addmode()
+    fdtd.set("name", "source")
+    fdtd.set("injection axis", "x-axis"); fdtd.set("direction", "Forward")
+    fdtd.set("x", -5.5e-6); fdtd.set("y", wg_upper_center_y); fdtd.set("z", z_center_si)
+    fdtd.set("y span", wg_width * 3); fdtd.set("z span", wg_height * 4)
+    fdtd.set("wavelength start", wl_start); fdtd.set("wavelength stop", wl_stop)
+    fdtd.updatesourcemode()
+    fdtd.set("mode selection", "fundamental mode")
+    
+    # --- 5. Monitor Setup ---
+    
+    # Monitors for Upper Waveguide
+    fdtd.addpower()
+    fdtd.set("name", "input_power")
+    fdtd.set("monitor type", "2D X-normal")
+    fdtd.set("x", -5.4e-6)
+    fdtd.set("y", wg_upper_center_y); fdtd.set("z", z_center_si)
+    fdtd.set("y span", wg_width * 3); fdtd.set("z span", wg_height * 4)
+
+    fdtd.addpower()
+    fdtd.set("name", "transmission")
+    fdtd.set("monitor type", "2D X-normal")
+    fdtd.set("x", 5.5e-6)
+    fdtd.set("y", wg_upper_center_y); fdtd.set("z", z_center_si)
+    fdtd.set("y span", wg_width * 3); fdtd.set("z span", wg_height * 4)
+
+    # **NEW**: Monitors for Lower Waveguide
+    fdtd.addpower()
+    fdtd.set("name", "add_monitor")
+    fdtd.set("monitor type", "2D X-normal")
+    fdtd.set("x", -5.4e-6)
+    fdtd.set("y", wg_lower_center_y); fdtd.set("z", z_center_si)
+    fdtd.set("y span", wg_width * 3); fdtd.set("z span", wg_height * 4)
+
+    fdtd.addpower()
+    fdtd.set("name", "drop_monitor")
+    fdtd.set("monitor type", "2D X-normal")
+    fdtd.set("x", 5.5e-6)
+    fdtd.set("y", wg_lower_center_y); fdtd.set("z", z_center_si)
+    fdtd.set("y span", wg_width * 3); fdtd.set("z span", wg_height * 4)
+
+    # Field Profile Monitor
+    fdtd.addprofile()
+    fdtd.set("name", "field_profile")
+    fdtd.set("monitor type", "2D Z-normal")
+    fdtd.set("x", 0); fdtd.set("y", 0)
+    fdtd.set("z", z_center_si)
+    fdtd.set("x span", 8e-6); fdtd.set("y span", 9e-6)
+    
+    # --- 6. Save the Simulation File ---
+    file_name = "ring_resonator_add_drop"
+    fdtd.save(file_name)
+    print(f"Simulation file saved as '{file_name}.fsp'")
+    print("Simulation setup is complete. File is ready to be run.")
