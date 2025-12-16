@@ -22,6 +22,11 @@ For each iteration, the script dynamically adjusts the waveguide vertical positi
 4. Data Extraction & Normalization
 Post-simulation, the script extracts raw transmission data and the source input power. It calculates the Normalized Transmission (T = Output / Input) to ensure accurate spectral analysis regardless of source variations.
 
+
+
 Output
 • Simulation Files: Saves individual .fsp files for each gap configuration (e.g., gap_50nm.fsp).
+
+<img width="720" height="448" alt="rr gap" src="https://github.com/user-attachments/assets/1e9d9b50-275e-4759-82c8-dfb2635ea610" />
+
 • Visualization: Generates a comparative plot overlaying the transmission spectra for all four gap values, allowing for direct assessment of resonance depth, bandwidth, and extinction ratio changes.
