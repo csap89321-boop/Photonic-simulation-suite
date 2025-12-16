@@ -1,0 +1,115 @@
+import sys
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# --- MODIFY THIS LINE IF YOUR LUMERICAL INSTALLATION IS DIFFERENT ---
+lumapi_path = r"C:\Program Files\Lumerical\v241\api\python"
+if lumapi_path not in sys.path:
+    sys.path.append(lumapi_path)
+import lumapi
+# --- Parameter Sweep Definition ---
+gap_values = [50e-9,60e-9,70e-9,100e-9]
+
+# --- Base Device & Simulation Parameters ---
+clad_z_min = -3e-6
+clad_z_max = 0
+wg_height = 0.22e-6
+wg_width = 0.40e-6
+ring_center_radius = 3.3e-6
+ring_width = 0.40e-6
+si_material = "Si (Silicon) - Palik"
+clad_material = "SiO2 (Glass) - Palik"
+wl_start = 1.5e-6
+wl_stop = 1.6e-6
+simulation_time = 4000e-15
+num_freq_points = 500
+
+# --- Dictionary to store results for each gap ---
+all_results = {}
+
+# --- Start a SINGLE FDTD session that will be used for all simulations ---
+# The 'with' statement is now outside the loop
+with lumapi.FDTD(hide=False) as fdtd:
+    # --- Loop over each gap value to perform the parameter sweep ---
+    for gap in gap_values:
+        print(f"\n--- Starting Simulation for Gap = {gap*1e9:.0f} nm ---")
+        
+        file_name = f"ring_resonator_gap_{gap*1e9:.0f}nm.fsp"
+
+        if os.path.exists(file_name):
+            print(f"Found existing file: '{file_name}'. Loading results.")
+            # Load the pre-run file into the current session
+            fdtd.load(file_name)
+        else:
+            print(f"File '{file_name}' not found. Building and running new simulation.")
+            
+            # --- CRITICAL CHANGE: Clear the project for the new simulation ---
+            # Instead of creating a new FDTD object, just reset the existing one.
+            fdtd.newproject()
+            
+            # --- Calculated Geometric Parameters for the current gap ---
+            ring_inner_radius = ring_center_radius - (ring_width / 2)
+            ring_outer_radius = ring_center_radius + (ring_width / 2)
+            wg_center_y = ring_outer_radius + gap + (wg_width / 2)
+            
+            # --- 1. Geometry, Simulation Region, Source, and Monitors ---
+            z_center_si = wg_height / 2
+            fdtd.addrect(name="clad", material=clad_material, x=0, y=0, z_min=clad_z_min, z_max=clad_z_max, x_span=12e-6, y_span=12e-6)
+            fdtd.addring(name="ring", material=si_material, x=0, y=0, z=z_center_si, inner_radius=ring_inner_radius, outer_radius=ring_outer_radius, z_span=wg_height)
+            fdtd.addrect(name="waveguide", material=si_material, x=0, y=wg_center_y, z=z_center_si, x_span=12e-6, y_span=wg_width, z_span=wg_height)
+            
+            fdtd.addfdtd(dimension="3D", x_min=-5.5e-6, x_max=5.5e-6, y_min=-5.25e-6, y_max=5.75e-6, 
+                         z_min=-1e-6, z_max=1e-6, simulation_time=simulation_time)
+            
+            fdtd.setglobalmonitor("frequency points", num_freq_points)
+            
+            fdtd.addmode(name="source", injection_axis="x-axis", direction="Forward",
+                         x=-5.5e-6, y=wg_center_y, z=z_center_si, 
+                         y_span=wg_width * 3, z_span=wg_height * 4,
+                         wavelength_start=wl_start, wavelength_stop=wl_stop)
+            fdtd.updatesourcemode()
+            fdtd.set("mode selection", "fundamental mode")
+            
+            fdtd.addpower(name="input_power", monitor_type="2D X-normal", x=-5.4e-6, 
+                          y=wg_center_y, z=z_center_si, y_span=wg_width * 3, z_span=wg_height * 4)
+            fdtd.addpower(name="transmission", monitor_type="2D X-normal", x=5.5e-6, 
+                          y=wg_center_y, z=z_center_si, y_span=wg_width * 3, z_span=wg_height * 4)
+            
+            # --- Save and Run Simulation ---
+            fdtd.save(file_name)
+            print(f"Simulation file saved as '{file_name}'.")
+            
+            print("Starting FDTD run... Check the Lumerical FDTD window for progress.")
+            fdtd.run()
+            print("FDTD run completed.")
+
+        # --- Extract Results (this part remains the same) ---
+        print("Extracting transmission data...")
+        transmission_result = fdtd.getresult("transmission", "T")
+        T_raw = np.abs(transmission_result['T'])
+        wavelengths = transmission_result['lambda'].flatten()
+        
+        input_result = fdtd.getresult("input_power", "T")
+        T_input = np.abs(input_result['T'])
+        
+        T_normalized = T_raw / T_input
+        
+        all_results[gap] = {'wavelengths': wavelengths, 'T_normalized': T_normalized}
+        print("Data extraction successful.")
+
+# The single FDTD window will automatically close here when the 'with' block finishes.
+
+# --- Plot all spectra on one graph ---
+plt.figure(figsize=(12, 7))
+for gap, data in all_results.items():
+    plt.plot(data['wavelengths'] * 1e9, data['T_normalized'], label=f"Gap = {gap*1e9:.0f} nm")
+plt.xlabel("Wavelength (nm)")
+plt.ylabel("Normalized Transmission")
+plt.title("Ring Resonator Transmission vs. Wavelength for Different Gaps")
+plt.grid(True, which='both', linestyle='--')
+plt.legend()
+plt.show()
+
+print("\n--- Parameter sweep and plotting complete. ---")
