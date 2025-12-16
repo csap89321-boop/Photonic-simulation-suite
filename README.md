@@ -1,1 +1,1 @@
-A collection of Python scripts and simulation files for designing optical components. This library automates workflows in Ansys Lumerical (FDTD, EME) and Zemax OpticStudio, covering waveguides, ring resonators, fiber tapers, and lens systems.
+A collection of Python scripts. This library automates workflows in Ansys Lumerical (FDTD, EME) and Zemax OpticStudio, covering waveguides, ring resonators, fiber tapers, and lens systems.
