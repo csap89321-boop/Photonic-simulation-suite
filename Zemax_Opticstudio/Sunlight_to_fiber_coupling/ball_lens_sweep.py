@@ -141,7 +141,7 @@ except:
 # Create comprehensive plot with Nature-style colors
 fig, ax = plt.subplots(figsize=(16, 9))
 
-# Nature publication style colors (colorblind-friendly palette)
+
 nature_colors = [
     '#0173B2',  # Blue
     '#DE8F05',  # Orange
@@ -181,7 +181,7 @@ ax.set_xlim([0, 60])
 ax.set_ylim([0, 100])
 ax.legend(fontsize=11, loc='best', ncol=2, framealpha=0.95, edgecolor='black')
 
-# Make it more Nature-like with thicker axes
+
 ax.spines['top'].set_linewidth(1.5)
 ax.spines['right'].set_linewidth(1.5)
 ax.spines['bottom'].set_linewidth(1.5)
