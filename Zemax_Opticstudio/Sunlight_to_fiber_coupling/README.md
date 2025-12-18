@@ -34,3 +34,48 @@ For every configuration, the script runs **Geometric Image Analysis (GIA)** with
 <img width="905" height="366" alt="image" src="https://github.com/user-attachments/assets/c5267cba-6d63-4c11-8f64-7f1dfc5f989b" />
 
 • **System Restoration:** Automatically cleans up temporary simulation files and resets the Zemax design to its original state.
+
+Achromatic Doublet Optimization for Fiber Coupling
+
+Purpose
+Ball lenses naturally suffer from significant spherical and chromatic aberrations, which limit fiber coupling efficiency. Adding an achromatic doublet downstream provides broadband chromatic correction and improves wavefront quality.
+
+ball_achromat.py optimizes this multi-element optical system to maximize fiber coupling efficiency. It builds upon a standard ball lens collimator by integrating an Achromatic Doublet (Edmund Optics specifications) and performing a targeted parametric sweep of the separation distance between the lens elements using Zemax OpticStudio.
+
+System Architecture
+The simulation loads a pre-designed system (ballad_corrected.ZOS) consisting of three core stages:
+1. Primary Collimator: A 100mm diameter Ball Lens (R=50mm).
+2. Aberration Corrector: A 12.5mm diameter, 20mm EFL Achromatic Doublet composed of S-BAH11 (Crown) and N-SF10 (Flint) glasses.
+3. Coupling Target: Single-mode optical fiber.
+
+Why Add an Achromatic Doublet?
+Standard ball lenses suffer from optical errors that reduce performance. By inserting an achromatic doublet, this design provides:
+• Chromatic Correction: Aligns the focal points of multiple wavelengths to reduce color blur.
+• Wavefront Error Reduction: The additional optical surfaces allow for better management of spherical aberration.
+• Higher Efficiency: Improved spot size and numerical aperture matching relative to a single ball lens.
+
+Key Workflow
+
+1. Single-Parameter Optimization
+Unlike exhaustive multi-variable sweeps, ball_achromat.py performs a high-precision optimization of a single critical variable:
+• Variable: Ball-to-Doublet spacing.
+• Range: 1 mm to 20 mm (1 mm steps).
+• Fixed Constraints: Ball lens geometry and Doublet-to-Fiber distance (set to 15mm).
+
+2. Analysis Loop
+For each distance configuration, the code:
+• Dynamically updates Surface 2 Thickness (the air gap between the ball lens rear and doublet front).
+• Executes Geometric Image Analysis (GIA) to compute the coupling efficiency.
+• Parses the results and logs the efficiency percentage.
+
+Output
+
+• Visualization: Generates a professional efficiency curve plotting coupling performance against element spacing. It automatically highlights the optimal configuration with a red star marker and compares it against the current design baseline (17mm).
+<img width="4168" height="2368" alt="efficiency_vs_ball_to_doublet_REAL_achromat" src="https://github.com/user-attachments/assets/3970750d-6849-4080-8cd4-f6058578a558" />
+
+• Optimization Report: Outputs a detailed summary including:
+    • Optimal Spacing: The exact distance required for maximum efficiency.
+    • Path Length Analysis: Calculates the total optical track length (Ball Rear -> Fiber).
+    • Performance Gain: Quantifies the percentage point improvement available by repositioning the doublet.
+    <img width="742" height="313" alt="image" src="https://github.com/user-attachments/assets/d072b2c1-2bbf-4d56-85eb-008343403621" />
+
