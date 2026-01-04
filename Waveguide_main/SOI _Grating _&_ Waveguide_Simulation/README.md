@@ -3,7 +3,8 @@
 This Python script automates the design and modal analysis of Silicon-on-Insulator (SOI) waveguides using the **Ansys Lumerical API**. It constructs a parametric geometry (including grating features) and performs an FDE (Finite Difference Eigenmode) sweep to analyze mode confinement.
 
 
-![Uploading soi.png…]()
+![Uploading Fig2.jpg…]()
+
 
 ## Key Features
 * **Automated Geometry:** Programmatically builds Clad, BOX, Wafer, Waveguide, and Grating structures.
